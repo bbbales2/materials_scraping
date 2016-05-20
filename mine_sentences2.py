@@ -1,7 +1,6 @@
 #%%
 import collections
 import json
-import lda
 import nltk
 import numpy
 import gensim
@@ -24,11 +23,11 @@ import mldb2
 
 from miningTools import stemSentence
 
-f = open('/home/bbales2/scraping/electrochemistry/rawData', 'r')
+f = open('/home/bbales2/scraping/rawData', 'r')#'/home/bbales2/scraping/electrochemistry/rawData'
 rawData = json.loads(f.read())
 f.close()
 
-base = "/home/bbales2/scraping/electrochemistry/data"
+base = "/home/bbales2/scraping/data"#"/home/bbales2/scraping/electrochemistry/data"
 import lxml.etree
 import itertools
 
@@ -38,13 +37,17 @@ def dropns(root):
             node.tag = node.tag.rsplit('}', 1)[-1]
 
 #%%
-session, engine = mldb2.getSession('/home/bbales2/scraping/electrochemistry/db.db')
+session, engine = mldb2.getSession('/home/bbales2/scraping/webpage/db/db.db')
 #%%
 worked = 0
 for i, fname in enumerate(rawData):
-    xmlF = os.path.join(base, fname, "xml")
+    if i > 10:
+        break
+
+    xmlF = os.path.join(base, fname, "xml.xml")
 
     if os.path.exists(xmlF):
+        print 'processing {0}'.format(xmlF)
         doc = ''
         with open(xmlF) as f:
             doc = f.read()
