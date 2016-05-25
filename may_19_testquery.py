@@ -10,6 +10,7 @@ import sqlalchemy.orm
 import itertools
 import mldb2
 import subprocess
+import nltk
 
 import re
 #%%
@@ -28,6 +29,47 @@ for i, paper in  enumerate(session.query(mldb2.Paper).all()):
 pId = 7335
 
 paper = session.query(mldb2.Paper).get(pId)
+
+#%%
+
+f = open('/home/bbales2/scraping/elements.txt')
+elementsShort = {}
+elements = {}
+for line in f:
+    number, l, short = line.strip().split()
+    elementsShort[short] = l.lower()
+    elements[l.lower()] = short
+f.close()
+
+evals = sorted(elementsShort.keys(), key = lambda x : (-len(x), x))
+
+stopwords = nltk.corpus.stopwords.words("english")
+
+es = []
+
+notword = re.compile('[^a-zA-Z0-9 ]')
+eleregex = re.compile('({elements})([0-9]*)'.format(elements = '|'.join(evals)))
+evalsSet = set([e.lower() for e in evals])
+
+blacklist = set(['pcbn', 'fsw', 'fsp', 'sps', 'vc', 'hcp', 'ics', 'uy', 'bcc', 'fcc', 'kerf', 'bics', 'bic', 'tbc', 'tgo', 'yag', 'wc'])
+
+makespace = re.compile(r'[.,-]')
+number = re.compile(r'^[0-9]+')
+
+notelements = set(['bcc', 'fcc', 'iss'])
+
+miller = re.compile(u'([\[{\u3008][\s]*([0-9]{3})[\s]*[\]}\u3009])')
+gamma = re.compile(u'\u03b3')
+gammaPrime = re.compile(u'\u03b3')
+temperature = re.compile(u'[0-9]+\xb0C')
+
+
+for sentence in paper.sentences:
+    print [sentence.string]
+    print sentence.string
+
+    print miller.findall(sentence.string)
+#%%
 
 os.chdir('/home/bbales2/models/syntaxnet')
 
