@@ -26,7 +26,7 @@ for i, paper in  enumerate(session.query(mldb2.Paper).all()):
     print i
 
 #%%
-pId = 7335
+pId = 7334
 
 paper = session.query(mldb2.Paper).get(pId)
 
@@ -48,10 +48,32 @@ stopwords = nltk.corpus.stopwords.words("english")
 es = []
 
 notword = re.compile('[^a-zA-Z0-9 ]')
-eleregex = re.compile('({elements})([0-9]*)'.format(elements = '|'.join(evals)))
-evalsSet = set([e.lower() for e in evals])
+#%%
+# element regex adapted from http://www.regular-expressions.info/captureall.html
+eleregex = re.compile('((?:{elements})+)[^a-zA-Z0-9]'.format(elements = '[0-9]?|'.join(evals)))
 
-blacklist = set(['pcbn', 'fsw', 'fsp', 'sps', 'vc', 'hcp', 'ics', 'uy', 'bcc', 'fcc', 'kerf', 'bics', 'bic', 'tbc', 'tgo', 'yag', 'wc'])
+alloyFamRegex = re.compile('((?:{elements})+)(?:[^\w]|$)'.format(elements = '[-]?[0-9.]*|'.join(evals)))
+alloyFamRegex.findall('present in Co-9.7Al-10.4W alloys if the aluminum content is too low for the composition to')
+
+
+def cleanup(string):
+    tosub = [(u'\u3008', '<'),
+             (u'\u3009', '>'),
+             (u'\u2013', '-'),
+             (u'\u2212', '-'),
+             (u'\xd710', '*'),
+             (u'\u223c', '~'),
+             (u'\u2019', '\''),
+             (u'\u03b3\u2032', 'GammaPrime'),
+             (u'\u03b3', 'GammaNotPrime')]
+
+    for pattern, replace in tosub:
+        string = re.sub(pattern, replace, string)
+
+    return string
+
+
+evalsSet = set([e.lower() for e in evals])
 
 makespace = re.compile(r'[.,-]')
 number = re.compile(r'^[0-9]+')
@@ -59,16 +81,65 @@ number = re.compile(r'^[0-9]+')
 notelements = set(['bcc', 'fcc', 'iss'])
 
 miller = re.compile(u'([\[{\u3008][\s]*([0-9]{3})[\s]*[\]}\u3009])')
-gamma = re.compile(u'\u03b3')
-gammaPrime = re.compile(u'\u03b3')
-temperature = re.compile(u'[0-9]+\xb0C')
-
+temperature = re.compile(u'([0-9]+)[\xb0]?C')
+pressure = re.compile(u'([0-9]+)[GM][pP]a')
+atomicPercent = re.compile('([0-9])+[\s]*at[\s]*.[\s]*%[\s]*({elements})'.format(elements = '|'.join(evals)))
+superalloys = ['SRR99', 'Ren\xe9 N4', 'CMSX-4', 'Ren\xe9 N5',
+               'Mar-M-247', 'CMSX-3', 'CMSX-5', 'CMSX-6',
+               'CMSX-2', 'Iconel', 'IN718', GTD-111, AM1, LEK 94, CMSX-186, K452,
+               USTB-F1, USTB-F2, USTB-F3, Rene88]
+superalloys = re.compile()
+superalloys = re.compile('[cC][mM][sS][xX]')
 
 for sentence in paper.sentences:
-    print [sentence.string]
-    print sentence.string
+    string = cleanup(sentence.string)
 
-    print miller.findall(sentence.string)
+    print [string]
+    print string
+
+    print 'Miller indices: ', miller.findall(string)
+    print 'Element: ', eleregex.findall(string)
+    print 'Alloy Family: ', alloyFamRegex.findall(string)
+    print 'Temperature: ', temperature.findall(string)
+    print 'Pressure: ', pressure.findall(string)
+    print 'Atomic Percent: ', atomicPercent.findall(string)
+    print ''
+#%%
+#superalloys.findall('CMSX-4')
+#%%
+pressure.findall('N4 data to 900MPa shows that')
+#%%
+for i, paper in enumerate(session.query(mldb2.Paper)):
+    if i >= 337 and i < 340:
+        print paper.data['link'][1]['@href']
+
+#%%
+count = session.query(mldb2.Paper).count()
+sentences = []
+for i, paper in enumerate(session.query(mldb2.Paper)):
+    for sentence in paper.sentences:
+        string = cleanup(sentence.string)
+
+        if pressure.search(string) and temperature.search(string):
+            #tempGood = False
+            #for temperatures in temperature.findall(string):
+            #    if len(temperatures) > 0 and int(temperatures) > 800:
+            #        tempGood = True
+            #        break
+
+            #pressureGood = False
+            #for pressures in pressure.findall(string):
+            #    if len(pressures) > 0 and int(pressures) > 50 and int(pressures) < 200:
+            #        pressureGood = True
+            #        break
+
+            #if tempGood and pressureGood:
+            if len(superalloys.findall(string)) > 0:
+                sentences.append(string)
+            #print [string]
+            #print string
+
+    print "{0} / {1}, {2}".format(i, count, len(sentences))
 #%%
 
 os.chdir('/home/bbales2/models/syntaxnet')
