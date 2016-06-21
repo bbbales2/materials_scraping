@@ -11,6 +11,7 @@ import itertools
 import mldb2
 import subprocess
 import nltk
+import random
 
 import re
 #%%
@@ -28,7 +29,7 @@ for i, paper in  enumerate(session.query(mldb2.Paper).all()):
 #%%
 pId = 7334
 
-paper = session.query(mldb2.Paper).get(pId)
+paper = session.query(mldb2.Paper).get(pId + 1)
 
 #%%
 
@@ -64,6 +65,7 @@ def cleanup(string):
              (u'\xd710', '*'),
              (u'\u223c', '~'),
              (u'\u2019', '\''),
+             (u'\xe9', 'e'),
              (u'\u03b3\u2032', 'GammaPrime'),
              (u'\u03b3', 'GammaNotPrime')]
 
@@ -72,7 +74,7 @@ def cleanup(string):
 
     return string
 
-
+#%%
 evalsSet = set([e.lower() for e in evals])
 
 makespace = re.compile(r'[.,-]')
@@ -84,10 +86,19 @@ miller = re.compile(u'([\[{\u3008][\s]*([0-9]{3})[\s]*[\]}\u3009])')
 temperature = re.compile(u'([0-9]+)[\xb0]?C')
 pressure = re.compile(u'([0-9]+)[GM][pP]a')
 atomicPercent = re.compile('([0-9])+[\s]*at[\s]*.[\s]*%[\s]*({elements})'.format(elements = '|'.join(evals)))
-superalloys = ['SRR99', 'Ren\xe9 N4', 'CMSX-4', 'Ren\xe9 N5',
+#
+superalloys = ['SRR99', 'Rene N4', 'CMSX-4', 'Ren\xe9 N5',
                'Mar-M-247', 'CMSX-3', 'CMSX-5', 'CMSX-6',
-               'CMSX-2', 'Iconel', 'IN718', GTD-111, AM1, LEK 94, CMSX-186, K452,
-               USTB-F1, USTB-F2, USTB-F3, Rene88]
+               'CMSX-2', 'Iconel', 'IN718', 'GTD-111',
+               'AM1', 'LEK 94', 'CMSX-186', 'K452',
+               'USTB-F1', 'USTB-F2', 'USTB-F3', 'Rene88',
+               'Iconel 738', 'NIMONIC 105', 'MC2', 'CMSX-10',
+               'IC10', 'CM247', 'SRR99', 'GTD 111',
+               'CM 247', 'CMSX-2', 'PX5', 'IN738LC',
+               'DD32', 'USTB-F1', 'USTB-F2', 'USTB-F3',
+               'PWA1483', 'DZ125L', 'DD6', 'R0',
+               'Allvac 718Plus', 'TMS-138', '720Li', 'PM 3030', 'PM2000']
+#%%
 superalloys = re.compile()
 superalloys = re.compile('[cC][mM][sS][xX]')
 
@@ -104,6 +115,54 @@ for sentence in paper.sentences:
     print 'Pressure: ', pressure.findall(string)
     print 'Atomic Percent: ', atomicPercent.findall(string)
     print ''
+#%%
+for sentence in paper.sentences:#superalloys
+    string = cleanup(sentence.string)
+    #string = cleanup(sentence)
+
+    match = re.findall('((?:[0-9]+)|(?:[a-zA-Z]+))[- ]?([a-zA-Z0-9-]+)?', string)
+
+    #print string, match
+    for m in match:
+        if m[0] == 'CMSX':
+            print m
+        #1/0
+    print ''
+#%%
+prefixes = set()
+suffixes = set()
+for string in superalloys:
+    string = cleanup(string)
+
+    match = re.findall('((?:[0-9]+)|(?:[a-zA-Z]+))[- ]?([a-zA-Z0-9-]+)?', string)
+
+    prefixes.add(match[0][0].lower())
+    if len(match[0][1]) > 0:
+        suffixes.add(match[0][1].lower())
+    #print match
+prefixes.remove('in')
+prefixes.remove('K')
+#%%
+
+sentences = []
+sup = re.compile('((?:[0-9]+)|(?:[a-zA-Z]+))[- ]?([a-zA-Z0-9-]+)?')
+for pN, ppr in enumerate(session.query(mldb2.Paper).all()):
+    for sentence in ppr.sentences:#superalloys
+        string = cleanup(sentence.string)
+        #string = cleanup(sentence)
+
+        match = sup.findall(string)
+
+        #print string, match
+        for m in match:
+            if m[0].lower() in prefixes:# or m[1] in suffixes:
+                #'CMSX'
+                sentences.append((ppr.id, m, sentence.string))
+                #print m, sentence.string
+            #1/0
+    print pN, len(sentences)
+#%%
+random.shuffle(sentences)
 #%%
 #superalloys.findall('CMSX-4')
 #%%
